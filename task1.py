@@ -12,30 +12,12 @@ left_sensor = ColorSensor(INPUT_1)
 right_sensor = ColorSensor(INPUT_2)
 button = Button()
 
-BASE_SPEED = 6
-TURN_SPEED = 8
-TURN_SPEED_BACK = 12
+BASE_SPEED = 8
+TURN_SPEED = 10
+TURN_SPEED_BACK = 14
 
 SLEEP_AFTER_MODE_CHANGE = 0.025
 LOOP_DELAY = 0.01
-
-
-BLACK = [((0, 50), (0, 50), (0, 50))]
-GREEN = [((0, 30), (40, 90), (30, 80))]
-RED = [((90, 255), (0, 50), (0, 50))]
-WHITE = [((90, 255), (90, 255), (90, 255))]
-
-COLOR_RANGES =[
-    BLACK,
-    GREEN,
-    RED,
-    WHITE
-]
-
-
-
-BLACK_IDX = 0
-
 
 def setup_sensors():
     left_sensor.mode = ColorSensor.MODE_RGB_RAW
@@ -46,33 +28,6 @@ def setup_sensors():
 def read_rgb(sensor):
     rgb = sensor.raw
     return rgb[0], rgb[1], rgb[2]
-
-
-def rgb_fits_range(rgb, rgb_range):
-    r, g, b = rgb
-    (r_min, r_max), (g_min, g_max), (b_min, b_max) = rgb_range
-
-    return (
-        r_min <= r <= r_max and
-        g_min <= g <= g_max and
-        b_min <= b <= b_max
-    )
-
-
-def match_rgb_index(rgb, color_ranges):
-    """
-    Returns the index of the first matching RGB range.
-    Returns -1 if the RGB reading does not fit any range.
-    """
-    for idx, rgb_range in enumerate(color_ranges):
-        if rgb_fits_range(rgb, rgb_range):
-            return idx
-
-    return -1
-
-
-def is_black(rgb):
-    return match_rgb_index(rgb, COLOR_RANGES) == BLACK_IDX
 
 
 def drive(left_speed, right_speed):
@@ -106,21 +61,17 @@ def wait_for_stop():
         while button.any():
             sleep(0.01)
         return True
-
-    else:
-        left_rgb = read_rgb(left_sensor)
-        right_rgb = read_rgb(right_sensor)
-        left_idx = match_rgb_index(left_rgb, COLOR_RANGES)
-        right_idx = match_rgb_index(right_rgb, COLOR_RANGES)
-        print("LEFT:", left_rgb, "idx:", left_idx, "RIGHT:", right_rgb, "idx:", right_idx)
     return False
 
 
 setup_sensors()
 
 SEARCH_GREEN = 0
-FOLLOW_GREEN = 1
-RETURN_GREEN = 2
+GREEN_ON_LEFT = 1
+GREEN_ON_RIGHT = 2
+RED_ON_LEFT = 3
+RED_ON_RIGHT = 4
+RETURN_GREEN = 10
 state = SEARCH_GREEN
 
 while True:
@@ -128,55 +79,40 @@ while True:
 
     try:
         while True:
-            print(state)
-            if wait_for_stop():
-                print("Stopped.")
-                tank_drive.off()
-                break
+            # if wait_for_stop():
+            #     print("Stopped.")
+            #     tank_drive.off()
+            #     break
                 
-            left_rgb = read_rgb(left_sensor)
-            right_rgb = read_rgb(right_sensor)
+            lr, lg, lb = read_rgb(left_sensor)
+            rr, rg, rb = read_rgb(right_sensor)
+            l_black = lr + lg + lb < 120
+            r_black = rr + rg + rb < 120
             if state == SEARCH_GREEN:
-                left_idx = match_rgb_index(left_rgb, BLACK + GREEN)
-                right_idx = match_rgb_index(right_rgb, BLACK + GREEN)
-                print("LEFT:", left_rgb, "idx:", left_idx, "RIGHT:", right_rgb, "idx:", right_idx)
-
-                if left_idx == 0 and right_idx == -1:
-                    turn_left()
-
-                elif left_idx == -1 and right_idx == 0:
-                    turn_right()
-
-                elif left_idx == 1 or right_idx == 1:
-                    state = FOLLOW_GREEN
-                    print(state)
-
-                    if left_idx == 1:
-                        turn_left()
-                        sleep(3)
-                    else:
-                        turn_right()
-                        sleep(3)
-
-                else:
+                if l_black and r_black:
                     forward()
+                    continue
+                if l_black:
+                    turn_left()
+                    continue
+                if r_black:
+                    turn_right()
+                    continue
 
-            # Debug
-            # print("LEFT:", left_rgb, "idx:", left_idx, "RIGHT:", right_rgb, "idx:", right_idx)
+                forward()
 
-            # if left_black and right_black:
-            #     forward()
+                # if lr > 100 and lg + lb < 80:
+                #     print("RED ON RIGHT")
 
-            # elif not left_black and right_black:
-            #     turn_right()
+                # if rr > 100 and rg + rb < 80:
+                #     print("RED ON RIGHT")
 
-            # elif left_black and not right_black:
-            #     turn_left()
+                # if lr < 50 and lg + lb > 100:
+                #     print("GREEN ON LEFT")
 
-            # else:
-            #     forward()
+                # if rr < 50 and rg + rb > 100:
+                #     print("GREEN ON RIGHT")
 
-            # sleep(LOOP_DELAY)
 
     finally:
         tank_drive.off()
