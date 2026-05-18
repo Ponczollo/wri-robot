@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-from ev3dev2.motor import OUTPUT_A, OUTPUT_B, SpeedPercent, MoveTank
+from ev3dev2.motor import OUTPUT_A, OUTPUT_B, OUTPUT_C, SpeedPercent, MoveTank, MediumMotor
 from ev3dev2.sensor import INPUT_1, INPUT_2
 from ev3dev2.sensor.lego import ColorSensor
 from ev3dev2.button import Button
 from time import sleep
 
 tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
+lift_motor = MediumMotor(OUTPUT_C)
 
 left_sensor = ColorSensor(INPUT_1)
 right_sensor = ColorSensor(INPUT_2)
@@ -19,6 +20,9 @@ TURN_SPEED_BACK = 14
 SLEEP_AFTER_MODE_CHANGE = 0.025
 LOOP_DELAY = 0.01
 HARD_TURN_LENGTH = 1
+SMALL_FORWARD_LENGTH = 0.1
+LIFT_SPEED = 25
+LIFT_ROTATIONS = 1.2
 
 MODE_REFLECT = ColorSensor.MODE_COL_REFLECT
 MODE_RGB = ColorSensor.MODE_RGB_RAW
@@ -44,18 +48,6 @@ def drive(left_speed, right_speed):
     tank_drive.on(SpeedPercent(left_speed), SpeedPercent(right_speed))
 
 
-def forward():
-    drive(BASE_SPEED, BASE_SPEED)
-
-
-def turn_left():
-    drive(-TURN_SPEED_BACK, TURN_SPEED)
-
-
-def turn_right():
-    drive(TURN_SPEED, -TURN_SPEED_BACK)
-
-
 def wait_for_press():
     print("Press any button to start...")
 
@@ -74,17 +66,17 @@ def wait_for_stop():
     return False
 
 
-setup_sensors(MODE_RGB)
-
 SEARCH_GREEN = 0
 GREEN_ON_LEFT = 1
 GREEN_ON_RIGHT = 2
 SEARCH_LANDING = 3
 PICK_UP_ITEM = 4
-RETURN_GREEN = ...
-SEARCH_RED = ...
+RETURN_TO_TRACK = 5
+ENTER_TRACK = 6
+SEARCH_RED = 7
 RED_ON_LEFT = ...
 RED_ON_RIGHT = ...
+RUN_FINISHED = 100
 
 state = SEARCH_GREEN
 
@@ -95,19 +87,20 @@ wait_for_press()
 try:
     while True: 
         if state == SEARCH_GREEN:
+            setup_sensors(MODE_RGB)
             while True:
                 lr, lg, lb = read_rgb(left_sensor)
                 rr, rg, rb = read_rgb(right_sensor)
                 l_dark = lr + lg + lb < 120
                 r_dark = rr + rg + rb < 120
                 if l_dark and r_dark:
-                    forward()
+                    drive(BASE_SPEED, BASE_SPEED)
                     continue
                 if l_dark:
-                    turn_left()
+                    drive(-TURN_SPEED_BACK, TURN_SPEED)
                     continue
                 if r_dark:
-                    turn_right()
+                    drive(TURN_SPEED, -TURN_SPEED_BACK)
                     continue
 
                 l_green = (lg + lb > 3 * lr) #and (lr < 30)
@@ -120,17 +113,17 @@ try:
                     state = GREEN_ON_RIGHT
                     break
 
-                forward()
+                drive(BASE_SPEED, BASE_SPEED)
         
 
         if state == GREEN_ON_LEFT:
-            turn_left()
+            drive(-TURN_SPEED_BACK, TURN_SPEED)
             sleep(HARD_TURN_LENGTH)
             state = SEARCH_LANDING
 
 
         if state == GREEN_ON_RIGHT:
-            turn_right()
+            drive(TURN_SPEED, -TURN_SPEED_BACK)
             sleep(HARD_TURN_LENGTH)
             state = SEARCH_LANDING
         
@@ -146,18 +139,48 @@ try:
                     state = PICK_UP_ITEM
                     break
                 if l_dark:
-                    turn_left()
+                    drive(-TURN_SPEED_BACK, TURN_SPEED)
                     continue
                 if r_dark:
-                    turn_right()
+                    drive(TURN_SPEED, -TURN_SPEED_BACK)
                     continue
-                forward()
+                drive(BASE_SPEED, BASE_SPEED)
 
 
         if state == PICK_UP_ITEM:
-            ...
+            tank_drive.off()
+            lift_motor.on_for_rotations(SpeedPercent(LIFT_SPEED), LIFT_ROTATIONS, block=True, brake=True)
+            state = RETURN_TO_TRACK
+
+
+        if state == RETURN_TO_TRACK:
+            setup_sensors(MODE_REFLECT)
+            tank_drive.on()
+            drive(-BASE_SPEED, -BASE_SPEED)
+            sleep(SMALL_FORWARD_LENGTH)
+            while True:
+                li = read_intensity(left_sensor)
+                ri = read_intensity(right_sensor)
+                l_dark = li < DARK_THRESHOLD
+                r_dark = ri < DARK_THRESHOLD
+                if l_dark and r_dark:
+                    state = RUN_FINISHED
+                    break
+                if l_dark:
+                    drive(TURN_SPEED_BACK, -TURN_SPEED)
+                    continue
+                if r_dark:
+                    drive(-TURN_SPEED, TURN_SPEED_BACK)
+                    continue
+                drive(-BASE_SPEED, -BASE_SPEED)
+
+
+        if state == RUN_FINISHED:
+            tank_drive.off()
+            break
 
 
 
 finally:
     tank_drive.off()
+    lift_motor.off(brake=True)
