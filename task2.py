@@ -24,7 +24,7 @@ BACK_TURN_SPEED_BACK = 10
 SLEEP_AFTER_MODE_CHANGE = 0.025
 LOOP_DELAY = 0.01
 TURN_90_LENGTH = 1
-TURN_180_LENGTH = 2
+TURN_180_LENGTH = 5
 SMALL_FORWARD_LENGTH = 1
 LIFT_SPEED = 10
 LIFT_ROTATIONS = 0.25
@@ -83,8 +83,7 @@ RED_ON_LEFT = 8
 RED_ON_RIGHT = 9
 RUN_FINISHED = 100
 
-state = RETURN_TO_TRACK
-
+state = SEARCH_GREEN
 
 
 wait_for_press()
@@ -112,15 +111,9 @@ try:
                 r_green = (rg + rb > 3 * rr) and (rr < 30)
 
                 if l_green:
-                    print(lr)
-                    print(lg)
-                    print(lb)
                     state = GREEN_ON_LEFT
                     break
                 if r_green:
-                    print(rr)
-                    print(rg)
-                    print(rb)
                     state = GREEN_ON_RIGHT
                     break
 
@@ -162,12 +155,13 @@ try:
             tank_drive.off()
             lift_motor.on_for_rotations(SpeedPercent(LIFT_SPEED), LIFT_ROTATIONS, block=True, brake=True)
             state = RETURN_TO_TRACK
+            drive(-TURN_SPEED, TURN_SPEED)
+            sleep(TURN_180_LENGTH)
+            tank_drive.off()
 
 
         if state == RETURN_TO_TRACK:
             setup_sensors(MODE_REFLECT)
-            drive(BACK_BASE_SPEED, BACK_BASE_SPEED)
-            sleep(SMALL_FORWARD_LENGTH)
             while True:
                 li = read_intensity(left_sensor)
                 ri = read_intensity(right_sensor)
@@ -177,17 +171,17 @@ try:
                     state = ENTER_TRACK
                     break
                 if l_dark:
-                    drive(BACK_TURN_SPEED_BACK, BACK_TURN_SPEED)
+                    drive(TURN_SPEED_BACK, TURN_SPEED)
                     continue
                 if r_dark:
-                    drive(BACK_TURN_SPEED, BACK_TURN_SPEED_BACK)
+                    drive(TURN_SPEED, TURN_SPEED_BACK)
                     continue
-                drive(BACK_BASE_SPEED, BACK_BASE_SPEED)
+                drive(BASE_SPEED, BASE_SPEED)
 
 
         if state == ENTER_TRACK:
-            drive(BACK_TURN_SPEED_BACK, BACK_TURN_SPEED)
-            sleep(TURN_90_LENGTH * 2)
+            drive(TURN_SPEED_BACK, TURN_SPEED * 2)
+            sleep(TURN_90_LENGTH)
             state = SEARCH_RED
 
 
