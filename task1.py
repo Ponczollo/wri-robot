@@ -66,53 +66,32 @@ def wait_for_stop():
 
 setup_sensors()
 
-SEARCH_GREEN = 0
-GREEN_ON_LEFT = 1
-GREEN_ON_RIGHT = 2
-RED_ON_LEFT = 3
-RED_ON_RIGHT = 4
-RETURN_GREEN = 10
-state = SEARCH_GREEN
-
 while True:
     wait_for_press()
 
     try:
         while True:
-            # if wait_for_stop():
-            #     print("Stopped.")
-            #     tank_drive.off()
-            #     break
+            if wait_for_stop():
+                print("Stopped.")
+                tank_drive.off()
+                break
                 
             lr, lg, lb = read_rgb(left_sensor)
             rr, rg, rb = read_rgb(right_sensor)
             l_black = lr + lg + lb < 120
             r_black = rr + rg + rb < 120
-            if state == SEARCH_GREEN:
-                if l_black and r_black:
-                    forward()
-                    continue
-                if l_black:
-                    turn_left()
-                    continue
-                if r_black:
-                    turn_right()
-                    continue
-
+            
+            if l_black and r_black:
                 forward()
+                continue
+            if l_black:
+                turn_left()
+                continue
+            if r_black:
+                turn_right()
+                continue
 
-                # if lr > 100 and lg + lb < 80:
-                #     print("RED ON RIGHT")
-
-                # if rr > 100 and rg + rb < 80:
-                #     print("RED ON RIGHT")
-
-                # if lr < 50 and lg + lb > 100:
-                #     print("GREEN ON LEFT")
-
-                # if rr < 50 and rg + rb > 100:
-                #     print("GREEN ON RIGHT")
-
+            forward()
 
     finally:
         tank_drive.off()
