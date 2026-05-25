@@ -201,6 +201,14 @@ try:
                 rr, rg, rb = read_rgb(right_sensor)
                 l_dark = lr + lg + lb < 100
                 r_dark = rr + rg + rb < 100
+
+                print(lr, end=" ")
+                print(rr, end=" | ")
+                print(lg, end=" ")
+                print(rg, end=" | ")
+                print(lb, end=" ")
+                print(rb)
+
                 if l_dark and r_dark:
                     drive(BASE_SPEED, BASE_SPEED)
                     continue
@@ -211,8 +219,8 @@ try:
                     drive(TURN_SPEED, TURN_SPEED_BACK)
                     continue
 
-                l_red = (lr > (lg + lb)) and (lr > 100)
-                r_red = (rr > (rg + rb)) and (rr > 100)
+                l_red = (lr > (lg + lb)) and (lr > 80)
+                r_red = (rr > (rg + rb)) and (rr > 80)
 
                 if l_red:
                     state = RED_ON_LEFT
@@ -253,7 +261,7 @@ try:
 
         if state == LEAVE_ITEM:
             tank_drive.off()
-            lift_motor.on_for_rotations(SpeedPercent(LIFT_SPEED), -LIFT_ROTATIONS, block=True, brake=True)
+            lift_motor.on_for_rotations(SpeedPercent(LIFT_SPEED), -LIFT_ROTATIONS - 0.10, block=True, brake=True)
             drive(BACK_BASE_SPEED, BACK_BASE_SPEED)
             state = RUN_FINISHED
 
