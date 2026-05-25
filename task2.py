@@ -74,17 +74,21 @@ def wait_for_stop():
 SEARCH_GREEN = 0
 GREEN_ON_LEFT = 1
 GREEN_ON_RIGHT = 2
-SEARCH_LANDING = 3
+SEARCH_GREEN_ZONE = 3
 PICK_UP_ITEM = 4
 RETURN_TO_TRACK = 5
 ENTER_TRACK = 6
 SEARCH_RED = 7
 RED_ON_LEFT = 8
 RED_ON_RIGHT = 9
+SEARCH_RED_ZONE = 10
+LEAVE_ITEM = 11
 RUN_FINISHED = 100
 
 state = SEARCH_GREEN
 
+
+green_left = False
 
 wait_for_press()
 
@@ -121,18 +125,20 @@ try:
         
 
         if state == GREEN_ON_LEFT:
+            green_left = True
             drive(TURN_SPEED_BACK, TURN_SPEED * 2)
             sleep(TURN_90_LENGTH)
-            state = SEARCH_LANDING
+            state = SEARCH_GREEN_ZONE
 
 
         if state == GREEN_ON_RIGHT:
+            green_left = False
             drive(TURN_SPEED * 2, TURN_SPEED_BACK)
             sleep(TURN_90_LENGTH)
-            state = SEARCH_LANDING
+            state = SEARCH_GREEN_ZONE
         
 
-        if state == SEARCH_LANDING:
+        if state == SEARCH_GREEN_ZONE:
             setup_sensors(MODE_REFLECT)
             while True:
                 li = read_intensity(left_sensor)
@@ -180,7 +186,10 @@ try:
 
 
         if state == ENTER_TRACK:
-            drive(TURN_SPEED_BACK, TURN_SPEED * 2)
+            if green_left:
+                drive(TURN_SPEED_BACK, TURN_SPEED * 2)
+            else:
+                drive(TURN_SPEED * 2, TURN_SPEED_BACK)
             sleep(TURN_90_LENGTH)
             state = SEARCH_RED
 
@@ -215,11 +224,37 @@ try:
                 drive(BASE_SPEED, BASE_SPEED)
 
         if state == RED_ON_LEFT:
-            print("RED ON LEFT")
-            state = RUN_FINISHED
+            drive(TURN_SPEED_BACK, TURN_SPEED * 2)
+            sleep(TURN_90_LENGTH)
+            state = SEARCH_RED_ZONE
 
         if state == RED_ON_RIGHT:
-            print("RED ON RIGHT")
+            drive(TURN_SPEED * 2, TURN_SPEED_BACK)
+            sleep(TURN_90_LENGTH)
+            state = SEARCH_RED_ZONE
+
+        if state == SEARCH_RED_ZONE:
+            setup_sensors(MODE_RGB)
+            while True:
+                lr, lg, lb = read_rgb(left_sensor)
+                rr, rg, rb = read_rgb(right_sensor)
+                l_dark = lg < 50
+                r_dark = rg < 50
+                if l_dark and r_dark:
+                    state = LEAVE_ITEM
+                    break
+                if l_dark:
+                    drive(TURN_SPEED_BACK, TURN_SPEED)
+                    continue
+                if r_dark:
+                    drive(TURN_SPEED, TURN_SPEED_BACK)
+                    continue
+                drive(BASE_SPEED, BASE_SPEED)
+
+        if state == LEAVE_ITEM:
+            tank_drive.off()
+            lift_motor.on_for_rotations(SpeedPercent(LIFT_SPEED), -LIFT_ROTATIONS, block=True, brake=True)
+            drive(BACK_BASE_SPEED, BACK_BASE_SPEED)
             state = RUN_FINISHED
 
         if state == RUN_FINISHED:
