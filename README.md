@@ -3,8 +3,8 @@
 ### Prowadzący
 - mgr inż. Daniel Giełdowski
 ### Autorzy
-- Jakub Kryczka
-- Bartosz Mączka
+- Jakub Kryczka 325180
+- Bartosz Mączka 331402
 
 ## Realizowane zadania
 ### Linefollower
